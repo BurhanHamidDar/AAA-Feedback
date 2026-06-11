@@ -15,6 +15,7 @@ export class WhatsAppWebService implements MessagingService {
       puppeteer: {
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
         headless: true,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       },
     });
   }
