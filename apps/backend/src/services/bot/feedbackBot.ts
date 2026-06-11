@@ -272,6 +272,8 @@ export function initializeFeedbackBot() {
     const phone = rawPhone.split("@")[0];
     const text = msg.body.trim();
 
+    logger.info(`FeedbackBot processing message from ${phone}: "${text}"`);
+
     // 1. Check Maintenance Mode
     const isMaintenance = await isMaintenanceModeEnabled();
     if (isMaintenance) {

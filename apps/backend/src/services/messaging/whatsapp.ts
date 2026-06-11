@@ -55,6 +55,8 @@ export class WhatsAppWebService implements MessagingService {
         return;
       }
 
+      logger.info(`WhatsApp raw message received from ${msg.from}: "${msg.body}"`);
+
       if (this.messageHandler) {
         try {
           const from = msg.from;
@@ -91,7 +93,7 @@ export class WhatsAppWebService implements MessagingService {
     try {
       // If it already has a domain suffix (like @c.us or @lid), send to it directly
       const formattedTo = to.includes("@") ? to : `${to}@c.us`;
-      logger.debug(`Sending WhatsApp message to: ${formattedTo}`);
+      logger.info(`Sending WhatsApp message to: ${formattedTo}`);
       await this.client.sendMessage(formattedTo, text);
     } catch (error) {
       logger.error(`Failed to send WhatsApp message to ${to}:`, error);
