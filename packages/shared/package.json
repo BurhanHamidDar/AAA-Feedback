@@ -1,0 +1,27 @@
+{
+  "name": "@aaa-feedback/shared",
+  "version": "0.1.0",
+  "description": "Shared TypeScript types, Zod schemas, and constants for AAA Feedback",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs && tsc --declaration --emitDeclarationOnly --outDir dist",
+    "dev": "tsup src/index.ts --format esm,cjs --watch --onSuccess \"tsc --declaration --emitDeclarationOnly --outDir dist\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "zod": "^3.25.36"
+  }
+}
