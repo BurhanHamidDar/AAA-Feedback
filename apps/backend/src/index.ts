@@ -136,6 +136,10 @@ app.listen(PORT, () => {
     .catch((err) => {
       const errMsg = err instanceof Error ? err.stack || err.message : String(err);
       logger.error(`❌ Failed to initialize WhatsApp service: ${errMsg}`);
+      logger.error("Exiting process in 5 seconds to trigger PM2 restart...");
+      setTimeout(() => {
+        process.exit(1);
+      }, 5000);
     });
 });
 
