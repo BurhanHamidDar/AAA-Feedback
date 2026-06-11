@@ -12,10 +12,21 @@ export class WhatsAppWebService implements MessagingService {
       authStrategy: new LocalAuth({
         dataPath: ".wwebjs_auth",
       }),
+      authTimeoutMs: 300000, // 5 minutes
+      qrMaxRetries: 10,
       puppeteer: {
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--no-zygote",
+          "--disable-gpu",
+        ],
         headless: true,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        protocolTimeout: 300000, // 5 minutes
       },
     });
   }
