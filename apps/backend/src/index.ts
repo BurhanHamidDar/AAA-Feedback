@@ -134,7 +134,8 @@ app.listen(PORT, () => {
       logger.info("🤖 WhatsApp Feedback Bot fully initialized!");
     })
     .catch((err) => {
-      logger.error("❌ Failed to initialize WhatsApp service:", err);
+      const errMsg = err instanceof Error ? err.stack || err.message : String(err);
+      logger.error(`❌ Failed to initialize WhatsApp service: ${errMsg}`);
     });
 });
 
