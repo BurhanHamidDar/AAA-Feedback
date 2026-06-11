@@ -30,6 +30,7 @@ import { detectSchemaExtensions } from "./utils/schema";
 // ──────────────────────────────────────────────
 
 const app: express.Application = express();
+app.set("trust proxy", 1); // Trust Nginx reverse proxy headers
 app.disable("x-powered-by"); // Hide Express footprint
 const PORT = parseInt(process.env.PORT ?? "4000", 10);
 
