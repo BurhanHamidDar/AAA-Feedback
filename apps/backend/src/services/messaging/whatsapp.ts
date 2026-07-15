@@ -59,7 +59,27 @@ export class WhatsAppWebService implements MessagingService {
 
       if (this.messageHandler) {
         try {
-          const from = msg.from;
+          // WhatsApp multi-device mode uses @lid (Linked Device ID) instead of @c.us.
+          // A @lid address is an opaque internal identifier — NOT a real phone number.
+          // We must resolve the contact to get the actual phone number before passing it
+          // to the bot, otherwise the database lookup will always fail to find a match.
+          let from = msg.from;
+          if (from.endsWith("@lid")) {
+            try {
+              const contact = await msg.getContact();
+              if (contact.number) {
+                from = `${contact.number}@c.us`;
+                logger.info(`Resolved @lid sender to real phone: ${from}`);
+              } else {
+                logger.warn(`Could not resolve real phone for @lid sender ${msg.from}, skipping message.`);
+                return;
+              }
+            } catch (lidErr) {
+              logger.error(`Failed to resolve @lid contact for ${msg.from}:`, lidErr);
+              return;
+            }
+          }
+
           const body = msg.body;
           const hasMedia = msg.hasMedia;
 
