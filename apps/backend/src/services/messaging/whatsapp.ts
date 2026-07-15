@@ -63,7 +63,6 @@ export class WhatsAppWebService implements MessagingService {
           "--disable-accelerated-2d-canvas",
           "--no-first-run",
           "--no-zygote",
-          "--single-process",   // Reduces memory and avoids zygote crashes on Oracle Cloud
           "--disable-gpu",
         ],
         headless: true,
