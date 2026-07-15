@@ -6,6 +6,7 @@ import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from "../../config/r2";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import { hasSubmitterType, hasSystemSettingsTable } from "../../utils/schema";
+import { getStudentContactsByPhone } from "../../utils/phone";
 
 export type BotStep =
   | "idle"
@@ -106,20 +107,7 @@ async function isMaintenanceModeEnabled(): Promise<boolean> {
   }
 }
 
-// Helper to clean and lookup parent contacts by phone (matching last 10 digits)
-async function getStudentContactsByPhone(phone: string) {
-  const last10 = phone.length >= 10 ? phone.slice(-10) : phone;
-  const { data, error } = await supabase
-    .from("student_contacts")
-    .select("*, student:students(*)")
-    .like("phone_number", `%${last10}`);
 
-  if (error) {
-    logger.error(`Error querying student_contacts for phone ${phone}:`, error);
-    return [];
-  }
-  return data || [];
-}
 
 // Student verification helper matching backend route rules
 async function verifyAdmissionNumber(phone: string, admissionNo: string): Promise<{ success: boolean; message: string; studentId?: string; studentName?: string }> {
@@ -314,9 +302,13 @@ export function initializeFeedbackBot() {
       // ──────────────────────────────────────────────
       switch (session.step) {
         case "idle": {
-          // Check if sender is a registered parent (Parent-First Verification)
+          // Parent-First Verification Flow:
+          // 1. Normalize and check if the incoming phone number is registered in the database.
+          //    We look up matches in the students table using both parent_phone and guardian_phone.
           const contacts = await getStudentContactsByPhone(phone);
           if (contacts.length > 0) {
+            // CASE 1: Registered parent number found.
+            // Cache the student-parent associations.
             session.contacts = contacts;
             session.step = "parent_menu";
             const parentName = contacts[0].contact_name || "Parent/Guardian";
@@ -331,6 +323,8 @@ export function initializeFeedbackBot() {
               `3. Help & Information`;
             await messagingService.sendMessage(rawPhone, welcomeMsg);
           } else {
+            // CASE 2: Parent number NOT found.
+            // Move to the unregistered flow where they can verify their student Admission Number.
             session.step = "unregistered_menu";
             const welcomeMsg =
               `Welcome to AAA Feedback\n` +

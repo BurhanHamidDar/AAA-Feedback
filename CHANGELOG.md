@@ -5,6 +5,13 @@ Format: [Version] — Date — Description
 
 ---
 
+## [1.2.1] — 2026-07-16 — Fix: Parent Phone Verification Normalization
+
+### Fixed
+- **Parent Phone Verification Bug**: Fixed the issue where all incoming WhatsApp numbers were treated as unregistered because of number formatting (spaces, dashes, brackets) and country code (+91) mismatches.
+- **Robust Phone Normalization**: Created a reusable `normalizePhoneNumber` and `phoneNumbersMatch` utility in `apps/backend/src/utils/phone.ts`.
+- **Database Lookup Realignment**: Updated the parent phone lookup in `feedbackBot.ts` and `routes/feedback.ts` to query the registry `students` table directly (matching `parent_phone` and `guardian_phone` columns) and normalize numbers on both sides before comparison.
+
 ## [1.2.0] — 2026-06-11 — Verification Redesign: Parent-First Flow
 
 ### Added

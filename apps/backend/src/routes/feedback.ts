@@ -12,6 +12,7 @@ import {
 import { logger } from "../utils/logger";
 import { analyzeFeedback } from "../services/ai/analyzeFeedback";
 import { hasSubmitterType, hasParentFields } from "../utils/schema";
+import { getStudentContactsByPhone } from "../utils/phone";
 
 const router: Router = Router();
 
@@ -58,20 +59,7 @@ router.post(
     }
 
     // 1. Look up parent contacts first (Parent-First Verification)
-    const last10 = whatsapp_number.length >= 10 ? whatsapp_number.slice(-10) : whatsapp_number;
-    const { data: parentContacts, error: contactsError } = await supabase
-      .from("student_contacts")
-      .select("*, student:students(*)")
-      .like("phone_number", `%${last10}`);
-
-    if (contactsError) {
-      logger.error("Failed to query parent contacts for submission:", contactsError);
-      res.status(500).json({
-        success: false,
-        error: { code: "DB_ERROR", message: "Error validating session" },
-      });
-      return;
-    }
+    const parentContacts = await getStudentContactsByPhone(whatsapp_number);
 
     let studentId = null;
     let relationship = null;
@@ -454,19 +442,12 @@ router.get(
 
       // Dynamic relationship lookup fallback if not stored
       if (!data.submitter_relationship && data.submitter_phone) {
-        const last10 = data.submitter_phone.length >= 10 ? data.submitter_phone.slice(-10) : data.submitter_phone;
-        let contactQuery = supabase
-          .from("student_contacts")
-          .select("relationship")
-          .like("phone_number", `%${last10}`);
-
-        if (data.student_id) {
-          contactQuery = contactQuery.eq("student_id", data.student_id);
-        }
-
-        const { data: contacts } = await contactQuery;
-        if (contacts && contacts.length > 0) {
-          data.submitter_relationship = contacts[0].relationship;
+        const contacts = await getStudentContactsByPhone(data.submitter_phone);
+        const match = data.student_id
+          ? contacts.find((c: any) => c.student_id === data.student_id)
+          : contacts[0];
+        if (match) {
+          data.submitter_relationship = match.relationship;
         }
       }
 
