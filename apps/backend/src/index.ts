@@ -127,7 +127,10 @@ app.listen(PORT, () => {
     logger.error("Failed to execute schema detection on boot:", err);
   });
 
-  // Initialize WhatsApp Bot services
+  // Initialize WhatsApp Bot services.
+  // initialize() is idempotent — calling it again while already running is a no-op.
+  // If initialization fails, the service's internal reconnect loop will retry
+  // automatically; we do NOT exit the process here so the HTTP API stays available.
   messagingService
     .initialize()
     .then(() => {
@@ -136,11 +139,8 @@ app.listen(PORT, () => {
     })
     .catch((err) => {
       const errMsg = err instanceof Error ? err.stack || err.message : String(err);
-      logger.error(`❌ Failed to initialize WhatsApp service: ${errMsg}`);
-      logger.error("Exiting process in 5 seconds to trigger PM2 restart...");
-      setTimeout(() => {
-        process.exit(1);
-      }, 5000);
+      logger.error(`[WA] Initial WhatsApp initialization failed: ${errMsg}`);
+      logger.error("[WA] The service will attempt to reconnect automatically. HTTP API remains available.");
     });
 });
 

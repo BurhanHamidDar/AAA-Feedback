@@ -5,6 +5,21 @@ Format: [Version] — Date — Description
 
 ---
 
+## [1.2.2] — 2026-07-16 — Fix: WhatsApp Client Stability & Singleton Guard
+
+### Fixed
+- **`window['onQRChangedEvent'] already exists` error**: Added an `isInitialized` singleton guard to `WhatsAppWebService.initialize()`. Calling `initialize()` while a client is already running now logs a warning and returns immediately, preventing duplicate Puppeteer event listener registration.
+- **Silent bot death after disconnect**: Added a `disconnected` event handler. When WhatsApp drops the session for any reason (network flap, phone logout, server wake), the broken client is destroyed cleanly and a fresh client is reconnected automatically after 30 seconds — without requiring a PM2 restart.
+- **`auth_failure` recovery**: `auth_failure` events now also trigger the reconnect loop instead of leaving the bot in a broken state.
+- **`Execution context was destroyed` errors**: Fixed by making client creation lazy (inside `initialize()`, not the constructor) and by calling `client.removeAllListeners()` + `client.destroy()` before rebuilding. This ensures Puppeteer never attempts to operate on a stale browser context.
+- **PM2 `exec_mode` made explicit**: Added `exec_mode: 'fork'` to `ecosystem.config.js`. Without this, a future `pm2 scale` could accidentally spin up cluster-mode workers that share the same `LocalAuth` session folder, causing all of the above errors simultaneously.
+
+### Changed
+- WhatsApp `initialize()` no longer calls `process.exit(1)` on failure. The internal reconnect loop handles recovery; the HTTP API stays available during reconnect attempts.
+- Added `--single-process` Puppeteer flag to reduce memory usage and avoid zygote-process crashes on Oracle Cloud's constrained ARM instances.
+- Added `kill_timeout: 5000` and `restart_delay: 3000` to PM2 config for graceful Puppeteer shutdown and to prevent rapid crash–restart loops.
+- All WhatsApp lifecycle log messages are now prefixed with `[WA]` for easy log filtering.
+
 ## [1.2.1] — 2026-07-16 — Fix: Parent Phone Verification Normalization
 
 ### Fixed
