@@ -256,11 +256,19 @@ async function verifyAdmissionNumber(phone: string, admissionNo: string): Promis
 
 export function initializeFeedbackBot() {
   messagingService.onMessageReceived(async (msg) => {
+    // rawPhone = the original JID (e.g. "919876543210@c.us" or "236622683627630@lid")
+    // Used ONLY for sending replies — WhatsApp routes both @c.us and @lid correctly.
     const rawPhone = msg.from;
-    const phone = rawPhone.split("@")[0];
+
+    // phone = the real phone number digits (e.g. "919876543210")
+    // Used for session keys and database lookups.
+    // For @lid senders whose real phone can't be resolved, this falls back to the
+    // LID user-part; those users will reach the unregistered-menu flow.
+    const phone = msg.phoneNumber;
+
     const text = msg.body.trim();
 
-    logger.info(`FeedbackBot processing message from ${phone}: "${text}"`);
+    logger.info(`FeedbackBot processing message from ${phone} (JID: ${rawPhone}): "${text}"`);
 
     // 1. Check Maintenance Mode
     const isMaintenance = await isMaintenanceModeEnabled();

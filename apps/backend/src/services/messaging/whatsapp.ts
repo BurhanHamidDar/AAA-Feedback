@@ -149,23 +149,55 @@ export class WhatsAppWebService implements MessagingService {
       if (!this.messageHandler) return;
 
       try {
-        // Resolve @lid (WhatsApp multi-device Linked Device ID) to real phone.
-        // An @lid address is an opaque internal identifier — NOT a phone number.
-        // Without resolution the database lookup will always fail to find a parent.
-        let from = msg.from;
-        if (from.endsWith("@lid")) {
+        // ── Two concerns must be handled separately ──────────────────────────
+        //
+        // 1. REPLY ADDRESS ("from"): always the ORIGINAL msg.from JID.
+        //    WhatsApp's internal routing can deliver to both @c.us and @lid
+        //    addresses. Converting a @lid to @c.us breaks routing because
+        //    "236622683627630" is not a real phone number — it is an opaque
+        //    Linked-Device ID. Sending to a fabricated "@c.us" produces the
+        //    error: "No LID for user".
+        //
+        // 2. PHONE NUMBER ("phoneNumber"): the real digits-only phone number
+        //    used for session keys and database lookups.
+        //    For @c.us senders: extracted directly from the JID (reliable).
+        //    For @lid senders: obtained from getContact(). We validate the
+        //    result by checking contact.id.server — if it is still "lid", the
+        //    contact record does not expose the real phone number, so we fall
+        //    back to the LID user-part (parent lookup will fall through to the
+        //    unregistered flow, which is safe and correct behaviour).
+        // ────────────────────────────────────────────────────────────────────
+
+        const from = msg.from; // Always the original JID — used only for replying
+        let phoneNumber = msg.from.split("@")[0]; // Fallback: JID user-part
+
+        if (msg.from.endsWith("@lid")) {
           try {
             const contact = await msg.getContact();
-            if (contact.number) {
-              from = `${contact.number}@c.us`;
-              logger.info(`[WA] Resolved @lid to real number: ${from}`);
+
+            // contact.id.server === 'c.us' means getContact() successfully resolved
+            // the @lid to a real phone-number-based contact. In that case,
+            // contact.number is the genuine phone number (e.g. "919876543210").
+            //
+            // If contact.id.server is still 'lid', the real phone is not exposed
+            // by the WhatsApp Web API for this contact. We keep the LID user-part
+            // as the session key — the bot degrades gracefully to the unregistered
+            // menu; the user can still submit feedback via admission-number flow.
+            if (contact.id && (contact.id as any).server === "c.us" && contact.number) {
+              phoneNumber = contact.number;
+              logger.info(`[WA] @lid resolved to real phone via contact: ${phoneNumber}`);
+            } else if (contact.number && (contact.id as any).server !== "lid") {
+              phoneNumber = contact.number;
+              logger.info(`[WA] @lid resolved to phone: ${phoneNumber}`);
             } else {
-              logger.warn(`[WA] Could not resolve @lid sender ${msg.from} — skipping.`);
-              return;
+              logger.warn(
+                `[WA] @lid sender ${msg.from} — real phone not available from contact ` +
+                `(contact.id.server="${(contact.id as any)?.server}", contact.number="${contact.number}"). ` +
+                `Using LID user-part as session key; parent lookup will fall through to unregistered flow.`
+              );
             }
           } catch (lidErr) {
-            logger.error(`[WA] Failed to resolve @lid contact for ${msg.from}:`, lidErr);
-            return;
+            logger.error(`[WA] getContact() failed for @lid ${msg.from} — using LID user-part as fallback:`, lidErr);
           }
         }
 
@@ -182,7 +214,8 @@ export class WhatsAppWebService implements MessagingService {
           : undefined;
 
         await this.messageHandler({
-          from,
+          from,         // Original JID → used by bot for replying
+          phoneNumber,  // Real phone (or LID fallback) → used by bot for DB/session
           body: msg.body,
           hasMedia,
           downloadMedia,
